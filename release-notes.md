@@ -1,3 +1,125 @@
+# 1.1.88
+
+## 中文
+
+- 版本 **1.1.88**。
+- **双版本适配（rc.2 + rc.5）**：#32/#36/#50/#53/#57/#62 在 0.2.1-rc.2 与 0.2.1-rc.5 上都能命中。旧 pattern 全部保留，rc.5 的新 pattern 追加，不再用新文案覆盖旧版。
+- **#36 升级字段**：bash/pwsh 的 `sandbox_permissions` justification 描述一并清洗；补上 `Approval is auto-granted.` 大写 marker，tool-fs 不再因为大小写差异永远漂移。
+- **#50 跨会话引用**：去掉 untrusted / “不要跟随指令”话术，保留只读快照的事实描述。
+- **#57 developer role**：rc.5 responses 通路的 `instructionRole` 分支纳入 openai/azure 白名单。
+- **#62 审批 fail-open**：rc.5 的 `void 0` 分支（无 approval 服务 / 无 agent / unavailable）全部放行；已打过旧 approval 分支的文件不会因 marker 被整条跳过。
+- **#32 / #53 状态标记**：#53 不再共用 #32 的注释 marker，旧宿主不会假绿；rc.5 残留的 `local web GUI` 前缀与 `DeepSeek Harness Web GUI` 描述已清掉。
+- **宿主门禁**：`package.json` 增加 `dshTargets`，状态页同时接受 rc.2 与 rc.5。
+- **验证**：web + desktop 双宿主 73/85 applied、0 pending、0 drifted；沙箱 42 个目标文件 apply/revert 字节级还原通过。
+
+## English
+
+- **1.1.88**.
+- **Dual-version support (rc.2 + rc.5)**: patches #32/#36/#50/#53/#57/#62 now match both 0.2.1-rc.2 and 0.2.1-rc.5. Old patterns are kept; rc.5 patterns are added instead of replacing them.
+- **#36 escalation schema**: also neutralizes the bash/pwsh `sandbox_permissions` justification text; adds the capitalised `Approval is auto-granted.` marker so tool-fs no longer drifts on case alone.
+- **#50 session references**: drops untrusted / "do not follow instructions" framing while keeping the read-only snapshot wording.
+- **#57 developer role**: the rc.5 `instructionRole` responses branch is included in the openai/azure allowlist.
+- **#62 approval fail-open**: rc.5 `void 0` branches (no approval service / no agent / unavailable) all allow; files already stamped by the old approval branch are re-processed instead of skipped.
+- **#32 / #53 markers**: #53 no longer shares #32's comment marker, so older hosts cannot show a false green; rc.5 leftovers (`local web GUI` prefix and `DeepSeek Harness Web GUI` description) are removed.
+- **Host gate**: `package.json` gains `dshTargets`, and the status page accepts both rc.2 and rc.5.
+- **Verified**: on both web and desktop hosts, 73/85 applied, 0 pending, 0 drifted; sandbox apply/revert restored all 42 target files byte-for-byte.
+
+# 1.1.87
+
+## 中文
+
+- 版本 **1.1.87**。
+- **回滚 / 备份加固**：
+  - 0 字节的 `.dshpurge.bak` 不再被当成"原版"写回宿主：`revertAll` / `restoreFromBak` 遇到空备份会改名为 `.bad` 并跳过，下次启动顺手清掉残骸。
+  - 宿主升级后刷新过期 bak 时补上单数 `marker` 的补丁（#6/#7/#8/#10），不再漏掉这些基线，避免旧 bak 覆盖新版文件导致新旧代码混合。
+  - 备份、配置、状态、覆盖文件统一走原子写（临时文件 + fsync + rename），断电或进程被杀不会留下半截文件。
+- **补丁命中契约**：标记 `optional` 的补丁命中数不符时记为软失败，不再阻断整体应用；#42 的两处插入型替换加探针，重复应用不会二次插入。
+- **桌面 / 进程（Windows）**：
+  - 进程枚举改用 `|` 分隔并强制 UTF-8 输出，修复中文安装路径下换包时旧进程杀不掉的问题。
+  - helper 只有在确实拿到 exe 路径时才带 `killApp`；换包失败会把原版重新拉起并写日志，不再留空桌面。
+- **安全加固**：
+  - asar 解包校验输出路径必须位于目标目录内，越界条目跳过并告警。
+  - 红队文件读写路径校验对最近存在的祖先做 `realpath`，堵住 symlink 逃逸。
+  - 更新检查只允许 `https`。
+  - 报告回放生成的 curl / HTTP 报文对头部、Cookie、请求体去除换行，防注入。
+- **提示词 / 运行钩子**：插件停用后 `rewriteFn` 直接返回宿主原始装配文本，不再残留注入；停用时清理 assemble guard；运行时缓存签名纳入红队设置、策略与 override 版本，状态变化立即生效。
+- **红队演练台**：`listEngagements` 默认不再逐条统计；漏洞列表与报告支持 `evidenceLimit`，大证据不再拖慢面板。
+- **子代理**：名额占位改为立即占用（`n+1`），append 失败时回退，避免并发派出超限。
+- **CLI**：`--apply` 存在失败项时以退出码 1 结束，脚本调用能感知失败。
+- **清理**：删除无引用的 `lib/mnemon-settings.js` 及 13 处死代码 / 未使用的 import；移除 `test/` 目录与 `test` 脚本，发布 CI 只做语法检查。
+
+## English
+
+- **1.1.87**.
+- **Rollback / backup hardening**:
+  - A zero-byte `.dshpurge.bak` is no longer treated as the original and written back to the host: `revertAll` / `restoreFromBak` rename it to `.bad` and skip it; leftovers are swept on the next start.
+  - When refreshing stale backups after a host upgrade, patches that use the singular `marker` form (#6/#7/#8/#10) are now included, so their baseline is not missed and an old backup can no longer overwrite the new file.
+  - Backups, config, state and override files are written atomically (temp file + fsync + rename), so a crash never leaves a half-written file.
+- **Patch hit contract**: `optional` patches that miss their expected hit count are recorded as soft failures instead of blocking the whole apply; the two insert-type replacements in #42 gained probes so re-applying does not insert twice.
+- **Desktop / processes (Windows)**:
+  - Process enumeration now uses `|` separators and forces UTF-8 output, fixing the case where the old process survived an asar swap under a Chinese install path.
+  - The helper passes `killApp` only when an exe path is known; a failed swap relaunches the original app and writes a log instead of leaving an empty desktop.
+- **Security hardening**:
+  - Asar extraction verifies each output path stays inside the destination directory; entries outside are skipped with a warning.
+  - Red-team path validation resolves `realpath` for the nearest existing ancestor, closing the symlink escape.
+  - Update checks accept `https` only.
+  - Curl / HTTP replay text strips newlines from headers, cookies and body to prevent injection.
+- **Prompt / runtime hooks**: after the plugin is disabled, `rewriteFn` returns the host's assembled prompt unchanged and the assemble guard is cleared; the runtime cache signature now includes red-team settings, policy and override revision so changes take effect immediately.
+- **Red-team console**: `listEngagements` no longer computes per-row stats by default; vuln lists and reports accept `evidenceLimit` so large evidence no longer slows the panel.
+- **Subagents**: slot reservation now takes effect immediately (`n+1`) and rolls back if the append fails, preventing over-limit dispatch under concurrency.
+- **CLI**: `--apply` exits with code 1 when any item failed, so scripts can detect the failure.
+- **Cleanup**: removed the unreferenced `lib/mnemon-settings.js` plus 13 dead functions / unused imports; dropped the `test/` directory and `test` script — release CI now runs syntax checks only.
+
+# 1.1.86
+
+## 中文
+
+- 版本 **1.1.86**。
+- **Web「应用 → 自动重启」后残留 server 导致 EADDRINUSE 起不来（#197，合并 PR #197）**：
+  - `restart-web.js` 把后台 server 的 pid/url 记到 `$DSH_HOME/dsh-purge/web-server-<port>.json`；`killOldServer` 增加按端口兜底，清掉旧版本留下、没有记录的孤儿。
+  - 新增 `lib/bin-preflight.js`：把回收钩子注入宿主 `bin.js` 顶部（跨平台），在 Cordis 激活、webserver 绑端口之前先回收残留；只杀命令行命中 `@deepseek-ai/dsh/lib/bin.js … web` 的进程。
+  - 重启时打印「后台运行、关窗不会停」，避免把提示符返回误判成程序已退出。
+  - 加固：记录里的 pid 拿不到命令行时，必须仍占着该端口才允许杀，防 PID 复用误杀；杀不掉就保留记录下次再试；杀完等待进程真正退出再绑端口。
+- **桌面端点「应用」换包顺序（#198，合并 PR #198）**：
+  - 先按安装根路径且不含 `--type=` 识别并杀掉 Electron main，再扫安装目录其余进程，避免 host 先死、main 还活着弹「host stopped」。
+  - 挪包失败（asar 仍被占用）时补上 `Start-Process`，把原版应用拉起来并写入 `%TEMP%\dsh-purge-desktop.log`，不再留空桌面。
+- 测试：96/96 通过。
+
+## English
+
+- **1.1.86**.
+- **Stale web server after "Apply → auto restart" caused EADDRINUSE on boot (#197, merged PR #197)**:
+  - `restart-web.js` records the background server pid/url in `$DSH_HOME/dsh-purge/web-server-<port>.json`; `killOldServer` now also reclaims by port, catching orphans left by older versions with no record.
+  - New `lib/bin-preflight.js` injects a reclaim hook at the top of the host `bin.js` (cross-platform) so it runs before Cordis activates and before the webserver binds; only processes whose command line matches `@deepseek-ai/dsh/lib/bin.js … web` are killed.
+  - The restart prints "running in the background; closing this window will NOT stop it" so the returned prompt is not mistaken for an exit.
+  - Hardening: when the recorded pid's command line cannot be read, it is killed only if it still listens on that port (guards against PID reuse); a failed kill keeps the record for the next boot; boot waits for the killed process to actually exit before binding.
+- **Desktop asar swap order (#198, merged PR #198)**:
+  - Electron main is identified by install root plus "no `--type=`" and killed first, then the rest of the install tree is swept, so the host no longer dies while main stays alive showing a "host stopped" dialog.
+  - If the asar move fails (still locked), the original app is relaunched and the reason is appended to `%TEMP%\dsh-purge-desktop.log` instead of leaving an empty desktop.
+- Tests: 96/96 pass.
+
+# 1.1.85
+
+## 中文
+
+- 版本 **1.1.85**。
+- **#196**：修复深色模式下部分按钮白底白字、完全看不清的问题。
+  - 根因：宿主暗色主题把 `--dsw-alias-brand-primary` 解析成近白色（`neutral-bluish-50` `#f9fafb`）。插件里凡是"品牌色作底 + 白字"的按钮（设置页的「应用」「保存注入」、演练台的「保存」「检索」「检测连通性」以及各类主按钮）在暗色下就变成一整块白。
+  - 现在暗色（`body[data-ds-dark-theme]`、`[data-theme="dusk"]`）下主按钮统一用绿色实底 `#3d8f68` + 白字，悬停用更深的 `#347a59`；`-webkit-text-fill-color` 一并显式指定，避免宿主强制白字穿透。
+  - 报告里的步骤序号圆点（`.rt-rep-step-no`）同样改为绿底白字。
+  - 浅色模式表现不变；新增 `test/client-dark-theme.test.js` 静态守护这几条暗色规则。
+- 测试：84/84 通过。
+
+## English
+
+- **1.1.85**.
+- **#196**: fix buttons in dark mode rendering as a solid white block (white text on white background).
+  - Root cause: the host dark theme resolves `--dsw-alias-brand-primary` to a near-white token (`neutral-bluish-50`, `#f9fafb`). Every plugin button that used "brand color as background + white text" (settings **Apply**, **Save injection**, drill console **Save**, **Search**, **Test connectivity**, and other primary buttons) turned into a white block in dark mode.
+  - Primary buttons under dark themes (`body[data-ds-dark-theme]`, `[data-theme="dusk"]`) now use a solid green `#3d8f68` with white text, with `#347a59` on hover; `-webkit-text-fill-color` is set explicitly so host-forced white text cannot leak through.
+  - The report step-number dots (`.rt-rep-step-no`) are switched to the same green/white pair.
+  - Light mode is unchanged; added `test/client-dark-theme.test.js` to guard these dark-mode rules.
+- Tests: 84/84 pass.
+
 # 1.1.84
 
 ## 中文
